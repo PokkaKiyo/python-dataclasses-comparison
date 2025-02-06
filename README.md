@@ -1,13 +1,14 @@
 Simple benchmark for comparing different dataclass-like providers.
 
+Fully works only up to Python 3.12.
+Does not work with Python 3.13 (yet), due to inaccuracies with Pympler for calculating the memory usage.
+
 Adapted from https://github.com/mCodingLLC/VideosSampleCode/blob/master/videos/079_which_dataclass_is_best/dataclasses_comparison.py
 
 But included comparisons to:
 - msgspec
 - SQLModel
-- SQLAlchemy
 
-Most SQLAlchemy related stuff unfortunately don't quite work.
 
 # Benchmarks
 ### Creation Speeds (in ns)
