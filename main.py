@@ -5,7 +5,6 @@
 #   "pydantic",
 #   "msgspec",
 #   "SQLModel",
-#   "sqlalchemy",
 # ]
 # ///
 from __future__ import annotations
@@ -19,7 +18,7 @@ import attr
 
 # Note: getsize function was replaced for licence compatibility reasons
 # so you may find slightly different results than seen in the video
-from pympler.asizeof import asizeof as getsize  # pip install Pympler
+from pympler.asizeof import asizeof as getsize  # pyright: ignore
 
 
 class Code(typing.Protocol):
@@ -366,95 +365,11 @@ class MsgspecClassCode:
     stdlib = False
 
 
-class SQLAlchemyClassCode:
-    name = "SQLAlchemy"
-    define = textwrap.dedent("""
-        from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-        class Base(DeclarativeBase): ...
-        class T(Base):
-            __tablename__ = "T"
-            id: Mapped[int] = mapped_column(primary_key=True)
-            n: Mapped[int] = mapped_column()
-            f: Mapped[float] = mapped_column()
-            s: Mapped[str] = mapped_column()
-    """)
-    create = "x = T(n=42, f=4.5, s='hello')"
-    getattr = "y = x.n"
-    setattr = "x.n = 0"
-
-    supports_mutable = True
-    supports_immutable = False
-    supports_defaults = True
-    supports_slots = False
-    supports_default_factory = True
-    supports_kw_getset = True
-    supports_converters = False
-    supports_validators = False
-    typesafe = True
-    stdlib = False
-
-
-class SQLAlchemyDataClassCode:
-    name = "SQLAlchemyDataclass"
-    define = textwrap.dedent("""
-        from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-        from sqlalchemy.orm import MappedAsDataclass
-
-        class Base(MappedAsDataclass, DeclarativeBase): ...
-        class T(Base):
-            __tablename__ = "T"
-            id: Mapped[int] = mapped_column(init=False, primary_key=True)
-            n: Mapped[int] = mapped_column()
-            f: Mapped[float] = mapped_column()
-            s: Mapped[str] = mapped_column()
-    """)
-    create = "x = T(n=42, f=4.5, s='hello')"
-    getattr = "y = x.n"
-    setattr = "x.n = 0"
-
-    supports_mutable = True
-    supports_immutable = False
-    supports_defaults = True
-    supports_slots = False
-    supports_default_factory = True
-    supports_kw_getset = True
-    supports_converters = False
-    supports_validators = False
-    typesafe = True
-    stdlib = False
-
-
 class SQLModelClassCode:
     name = "SQLModel (table=False)"
     define = textwrap.dedent("""
         from sqlmodel import SQLModel
         class T(SQLModel):
-            n: int
-            f: float
-            s: str
-    """)
-    create = "x = T(n=42, f=4.5, s='hello')"
-    getattr = "y = x.n"
-    setattr = "x.n = 0"
-
-    supports_mutable = True
-    supports_immutable = True
-    supports_defaults = True
-    supports_slots = False
-    supports_default_factory = True
-    supports_kw_getset = True
-    supports_converters = True
-    supports_validators = True
-    typesafe = True
-    stdlib = False
-
-
-class SQLModelTableClassCode:
-    name = "SQLModelTable"
-    define = textwrap.dedent("""
-        from sqlmodel import SQLModel, Field
-        class T(SQLModel, table=True):
-            id: int | None = Field(default=None, primary_key=True)
             n: int
             f: float
             s: str
@@ -490,10 +405,7 @@ code_classes = [
     AttrClassSlotsCode,
     ###
     MsgspecClassCode,
-    SQLAlchemyClassCode,
-    SQLAlchemyDataClassCode,
     SQLModelClassCode,
-    # SQLModelTableClassCode,
 ]
 
 
@@ -526,8 +438,9 @@ def run_setattr(code: Code, trials=1_000_000) -> tuple[str, float]:
 
 def run_sizeof(code: Code) -> tuple[str, int]:
     setup = code.define + "\n" + code.create + "\n"
-    exec(setup)
-    size = getsize(locals()["x"])
+    ns = {}
+    exec(setup, ns)
+    size = getsize(ns["x"])
     return code.name, size
 
 
@@ -548,9 +461,7 @@ def test_creation_speeds():
         run_create,
         "creation speeds",
         "{}: {} - {:.0f} ns",
-        exclude={
-            SQLModelTableClassCode,  # this works but it's terribly slow
-        },
+        exclude={},
     )
 
 
@@ -559,9 +470,7 @@ def test_getattr_speeds():
         run_getattr,
         "getattr speeds",
         "{}: {} - {:.0f} ns",
-        exclude={
-            SQLModelTableClassCode,  # can't get it to work
-        },
+        exclude={},
     )
 
 
@@ -574,7 +483,6 @@ def test_setattr_speeds():
             TupleCode,  # immutable
             CollectionsNamedTupleCode,  # immutable
             TypingNamedTupleCode,  # immutable
-            SQLModelTableClassCode,  # can't get it to work
         },
     )
 
@@ -584,11 +492,7 @@ def test_mem_usage():
         run_sizeof,
         "mem usage",
         "{}: {} - {} bytes",
-        exclude={
-            SQLAlchemyClassCode,  # can't get it to work
-            SQLAlchemyDataClassCode,  # can't get it to work
-            SQLModelTableClassCode,  # can't get it to work
-        },
+        exclude={},
     )
 
 
